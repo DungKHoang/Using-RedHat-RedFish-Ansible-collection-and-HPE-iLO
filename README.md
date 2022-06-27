@@ -25,16 +25,15 @@ Examples of playbooks
   The CSV file contains list of IP addresses and iLO credentials of target servers. The format is:
   ilo_ip, ilo_username,ilo_password,site
 
-### Playbooks
-  - 1. System Inventory
-        -- 1.1 Playbooks
+### System Inventory Playbooks
+
         - system-inventory.yml  --> system-inventory-tasks.yml    --> system-sub-inventory-cpu.yml, system-sub-inventory-firmware.yml
         - memory-inventory.yml  --> memory-inventory-tasks.yml    --> memory-sub-inventory.yml
         - nic-inventory.yml     --> nic-inventory-tasks.yml       --> nic-manager-sub-inventory.yml, nic-sub-inventory.yml
         - storage-inventory.yml --> storage-inventory-tasks.yml   --> storage-sub-inventory-controller.yml, storage-sub-inventory-pdisk.yml,storage-sub-inventory-ldisk.yml
         - psu-inventory.yml     --> psu-inventory-tasks.yml       --> psu-sub-inventory.yml
 
-        - 1.2 Commands to run
+### Commands to run
         - ansible-playbook system-inventory.yml --extra-vars "server_csv=list-servers.csv"
         - ansible-playbook memory-inventory.yml --extra-vars "server_csv=list-servers.csv"
         - ansible-playbook nic-inventory.yml --extra-vars "server_csv=list-servers.csv"
