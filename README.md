@@ -27,7 +27,7 @@ Examples of playbooks
 
 ### Playbooks
   - 1. System Inventory
-        - 1.1 Playbooks
+        -- 1.1 Playbooks
         - system-inventory.yml  --> system-inventory-tasks.yml    --> system-sub-inventory-cpu.yml, system-sub-inventory-firmware.yml
         - memory-inventory.yml  --> memory-inventory-tasks.yml    --> memory-sub-inventory.yml
         - nic-inventory.yml     --> nic-inventory-tasks.yml       --> nic-manager-sub-inventory.yml, nic-sub-inventory.yml
