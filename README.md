@@ -6,8 +6,8 @@
  - Python3 - current release
  - Ansible - current release
  - Redfish python library installed: **pip3 install redfish==3.0.2**
- - Redfish collection from RedHat community: *ansible-galaxy collection install community.general*
- - HPE iLO collection from RedHat: *ansible-galaxy collection install hpe.ilo*
+ - Redfish collection from RedHat community: **ansible-galaxy collection install community.general**
+ - HPE iLO collection from RedHat: **ansible-galaxy collection install hpe.ilo**
 
  - Target servers: 
    - iLO firmware > 2.65
