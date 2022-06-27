@@ -1,0 +1,65 @@
+
+
+- name: Collect data from input parameters
+  set_fact:
+    baseuri:        "{{ item.u_hpe_ilo_ip_v4 }}"
+    username:       "{{ item.u_hpe_ilo_username }}"
+    password:       "{{ item.u_hpe_ilo_password }}"
+                   
+    sys_id:         "{{ item.sys_id }}"       # Server id in SN
+    new_username:   "{{ item.u_ilo_username }}"
+    new_ilo_ip_v4:  "{{ item.u_ilo_ip_v4 }}"
+    ilo_firmware:   "{{ item.u_ilo_firmware }}"
+        
+
+- name: Set extra variables
+  set_fact:
+    error_msg:      "OK"
+
+    current_fw:     "{{ ilo_firmware.split(' ').0 }}"
+    approved_fw:    "{{ approved_firmware.split(' ').0 }}" # Defined in Global settings
+
+    new_ilo_firmware: "{{ ilo_firmware }}" # By default it's the current value. When FW is udpated , it will be set to approved_firmware
+
+- name: Establish iLO connection
+  community.general.redfish_command:
+    category:   Sessions
+    command:    CreateSession
+    baseuri:    "{{ baseuri }}"
+    username:   "{{ username }}"
+    password:   "{{ password }}"
+  register: result
+  ignore_errors: yes
+
+
+
+#- name: Configure credential 
+#  include_tasks: configure-ilo-credential.yml
+
+- name: Configure ilo firmware
+  include_tasks: configure-ilo-firmware.yml
+  when: current_fw < approved_fw
+
+- name: Configure IP address
+  include_tasks: configure-ilo-network.yml
+
+- name: reboot system / reset iLO
+  include_tasks: configure-ilo-reset.yml
+      
+
+
+
+- name: Create updated record
+  set_fact:
+    ci_updated: 
+      ci_table_name:  "{{ item.ci_table_name }}"
+      sys_id:         "{{ item.sys_id }}"
+      u_ilo_ip_v4:    "{{ new_ilo_ip_v4 }}"
+      u_ilo_username: "{{ new_username }}"
+      u_ilo_password: "{{ new_password }}"
+      u_ilo_firmware: "{{ new_ilo_firmware }}"
+      error_msg:      "{{ error_msg }}"
+
+- name: Update result set
+  set_fact:
+    resultset:   "{{ resultset + [ ci_updated ]  }}"

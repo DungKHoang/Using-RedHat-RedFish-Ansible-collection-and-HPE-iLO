@@ -1,0 +1,41 @@
+
+{
+    "source_record":                                                                                ##  this information is for making a call to update the source record – json object
+    {
+                    "table":    "sc_task",                                                    ## name of the source record table (sc_task in this case) - string
+                    "sys_id":   "472f44d1af634550abaad83ab3274928"                                                              ## sys_id of the source record - string
+    } ,
+    "storage":      [],
+    "network":      [],
+    "servers":                                                                                                       ##  this information contains the necessary info for each of the Cis being requested – json array
+    [
+                    {
+                                    "ci_table_name":"cmdb_ci_server",                 ## table name for the source of the CI (in case you want to update the CI directly - string
+                                    "sys_id": "1111", 
+                                    "u_slin":"<slin1>",                                                      ## SLIN of the requested CI - string
+                                    "u_hpe_ilo_username":"admin",        ## HPE iLO Username - string
+                                    "u_hpe_ilo_password":"<hpe_password>",              ## HPE iLO Password - string
+                                    "u_hpe_ilo_ip_v4": "<hpe_ilo_ip>?,
+                                    "u_ilo_username": "tenant_1",                 ## username comes from IMO request - will be used by Ansible playbooks 
+                                    "u_ilo_password":"<tenant_ilo_password",                           ## to be filled out by Ansible playbooks  - OUT
+                                    "u_ilo_ip_v4": "<tenant_ilo_ip>" ,                             ## to be filled out by Ansible playbooks  - OUT
+                                    "u_ilo_firmware": "2.65",               ## to be updated by Ansible playbooks     - OUT 
+                                    "u_state":      "",                            ## to be updated by Ansible playbooks     - OUT  
+                                    "u_substate":      ""                          ## to be updated by Ansible playbooks     - OUT 
+                    },
+                    {
+                                    "ci_table_name":"cmdb_ci_server",                 ## table name for the source of the CI (in case you want to update the CI directly - string
+                                    "sys_id": "2222", 
+                                    "u_slin":"<slin1>",                                                      ## SLIN of the requested CI - string
+                                    "u_hpe_ilo_username":"admin",        ## HPE iLO Username - string
+                                    "u_hpe_ilo_password":"<hpe_password>",              ## HPE iLO Password - string
+                                    "u_hpe_ilo_ip_v4": "<hpe_ilo_ip>?,
+                                    "u_ilo_username": "tenant_1",                 ## username comes from IMO request - will be used by Ansible playbooks 
+                                    "u_ilo_password":"<tenant_ilo_password",                           ## to be filled out by Ansible playbooks  - OUT
+                                    "u_ilo_ip_v4": "<tenant_ilo_ip>" ,                             ## to be filled out by Ansible playbooks  - OUT
+                                    "u_ilo_firmware": "2.65",               ## to be updated by Ansible playbooks     - OUT 
+                                    "u_state":      "",                            ## to be updated by Ansible playbooks     - OUT  
+                                    "u_substate":      ""                          ## to be updated by Ansible playbooks     - OUT 
+                    }
+    ]
+}

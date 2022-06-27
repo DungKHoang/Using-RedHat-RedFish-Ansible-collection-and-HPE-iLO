@@ -1,0 +1,95 @@
+---
+
+- hosts: localhost  
+
+  # ---- When implementing in Ansible Tower, those variables must be placed either in extra-vars or config file
+  # ---- TBD
+  vars:
+  
+    # For configure-ilo-firmware 
+    iso_url:            'http://10.1.10.71/firmware/SPP%20software/P52575_001_gen10spp-2022.03.0-SPP2022030.2022_0326.24.iso'
+    bootdevice:         Cd                                          # None, Pxe, Cd, Floppy, Hdd, BiosSetup,Utilities, UefiTarget & SDCard 
+    approved_firmware:  '2.65 Feb 23 2022' 
+
+
+    # for iLO credentials for tenant - Global settings
+    # username is provided from extra-vars sent by SN
+    role_id:              "Administrator"
+    new_password:         "{{ lookup('password', '/dev/null length=15 chars=ascii_letters') }}"
+
+  tasks:
+    - name: Initialize dataset
+      set_fact:
+        resource_list: []
+        resultset:     []
+
+        ## --- Operations status
+        ansible_operation_completed:  true
+
+    - name: read table/table-id
+      set_fact:
+        table_name:     "{{ source_record.table }}"
+        task_id:        "{{ source_record.sys_id }}"
+
+    - name: Build resource list from servers, storage, network
+      set_fact:
+          resource_list:  "{{ resource_list + [item] }}"
+      loop: "{{ servers }}"
+      when: servers | length > 0
+      # To add Loop: "{{storage}}" then loop: "{{ network}}"
+
+    # Task 1a: Check access to web server ISO
+    - name: Web server connectivity
+      uri:
+        url:        "{{ iso_url }}"
+        method:     HEAD
+      ignore_errors: yes
+      register: iso_result
+
+    - block:
+        - name: Set operation to fail
+          set_fact:
+            ansible_operation_completed:  false
+            resultset:
+              - error_msg:  " web server/iso file for ProLiant SPP is not accessible ==> {{iso_result.url }}"  
+      when: iso_result.status != 200  
+        
+
+    # Task 2: Check connectivity to all resources
+    - name: Servers connectivity
+      include_tasks:  configure-check-connectivity.yml
+      loop: "{{ resource_list }}"          
+      when: resource_list | length > 0
+
+    # Task 3: Configure resources only if ansible_completed is True
+    - block:
+        - name: Process server
+          include_tasks:    configure-server.yml
+          loop: "{{ servers }}"          
+          when: servers | length > 0
+
+        #- name: Process Storage
+        #- name: Process Network
+      when: ansible_operation_completed == True
+
+
+    - name: build data set to return
+      set_fact:
+        payload:
+            ansible_operation_completed:  "{{ ansible_operation_completed }}"
+            result:                       "{{resultset}}"
+
+    - name: Convert to json
+      set_fact:
+        payload: "{{payload | to_json | replace('\"', '\\\"')}}"
+
+
+    - name: Add attribute
+      set_fact:
+        payload: ' {"u_ansible_tower_payload": "{ {{payload}} "}  '
+
+    - name: Print to json
+      debug:
+        msg:  "{{payload }}"
+
+

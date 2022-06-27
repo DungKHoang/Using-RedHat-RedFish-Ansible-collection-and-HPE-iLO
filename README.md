@@ -40,6 +40,25 @@
         - ansible-playbook storage-inventory.yml --extra-vars "server_csv=list-servers.csv"
         - ansible-playbook psu-inventory.yml --extra-vars "server_csv=list-servers.csv"
 
+## Cofiguring iLO
+ This set of playbooks will configure iLO servers for:
+  - firmware update ( including a **reset of ILO **)
+  - IP address for iLO
+
+
+### JSON input file
+  The input filw will be in JSON format. Use the **resources.json** as an example. Playbooks will use only attributes related to iLO
+
+### Playbooks for configuring iLO
+
+        - configure-GS-resources.yml    --> configure-check-connectivity.yml,configure-ilo-firmware.yml,configure-ilo-network.yml
+
+### Commands to run
+        - ansible-playbook --extra-vars '@resources.json' configure-GS-resources.yml
+
+### Pre-requisites
+    Review the vars section in **configure-GS-resources.yml**
+
 
     
 

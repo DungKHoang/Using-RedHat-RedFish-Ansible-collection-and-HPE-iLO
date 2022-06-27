@@ -1,0 +1,77 @@
+
+
+- name: Collect data from input parameters
+  set_fact:
+    baseuri:        "{{ item.u_hpe_ilo_ip_v4 }}"
+    username:       "{{ item.u_hpe_ilo_username }}"
+    password:       "{{ item.u_hpe_ilo_password }}"
+
+    ip_v4:          "{{ item.u_ilo_ip_v4 }}"
+                   
+    sys_id:         "{{ item.sys_id }}"       # Server id in SN
+    
+- name: Set extra variables
+  set_fact:
+    error_msg:      "OK"
+
+## --- Task 1 - Validate iLO connection
+- name: Establish iLO connection
+  community.general.redfish_command:
+    category:   Sessions
+    command:    CreateSession
+    baseuri:    "{{ baseuri }}"
+    username:   "{{ username }}"
+    password:   "{{ password }}"
+  register: result
+  ignore_errors: yes
+
+
+
+- block: 
+    - name: set operation status
+      set_fact:
+        ansible_operation_completed:  "{{ ansible_operation_completed and result.failed }}"
+
+    - name: Create updated record
+      set_fact:
+        ci_updated: 
+          ci_table_name:    "{{ item.ci_table_name }}"
+          sys_id:           "{{ item.sys_id }}"
+          u_hpe_ilo_ip_v4:  "{{ baseuri }}"
+          error_msg:        "{{ result.msg }}"
+
+    - name: Update result set
+      set_fact:
+        resultset:   "{{ resultset + [ ci_updated ]  }}"
+      
+  when: result.failed == true
+
+
+## --- Task 2 - Validate ip address to be configured
+##      check whether u_ilo_ip_v4 is being used
+
+- name: Validate that {{ item.u_ilo_ip_v4 }} is not used
+  command: ping -c3 "{{ item.u_ilo_ip_v4 }}"
+  ignore_errors: yes
+  register: output
+
+- block: 
+    - name: set operation status
+      set_fact:
+        ansible_operation_completed:  "{{ ansible_operation_completed and output.failed }}"
+
+    - name: Create updated record
+      set_fact:
+        ci_updated: 
+          ci_table_name:    "{{ item.ci_table_name }}"
+          sys_id:           "{{ item.sys_id }}"
+          u_hpe_ilo_ip_v4:  "{{ baseuri }}"
+          u_ilo_ip_v4:      "{{ item.u_ilo_ip_v4 }}"
+          error_msg:        " Custom IP {{ item.u_ilo_ip_v4 }} is already in use"
+
+    - name: Update result set
+      set_fact:
+        resultset:   "{{ resultset + [ ci_updated ]  }}"
+      
+  when: output.failed == false
+

@@ -1,0 +1,66 @@
+
+- name: set FW value
+  set_fact:
+    new_ilo_firmware: "{{ approved_firmware }}"
+
+- name: Get Virtual Media information on {{ baseuri }}
+  community.general.redfish_info:
+    category: Manager
+    command: GetVirtualMedia
+    baseuri: "{{ baseuri }}"
+    auth_token: "{{ result.session.token }}"
+  register: result_vm
+
+- name: Set floppy / CD variables
+  set_fact:
+      cd_connected:  "{{ result_vm.redfish_facts.virtual_media.entries.0.1.1.ConnectedVia }}"
+      cd_image:      "{{ result_vm.redfish_facts.virtual_media.entries.0.1.1.Image }}"
+
+
+- name: Eject CD/DVD Virtual Media on {{ baseuri }}
+  community.general.redfish_command:
+    auth_token: "{{ result.session.token }}"
+    baseuri: "{{ baseuri }}"
+    category: Manager
+    command: VirtualMediaEject      
+    virtual_media:
+      image_url: "{{cd_image}}"
+  when: cd_connected != 'NotConnected'
+
+- name: Insert CD/DVD Virtual Media on {{ baseuri }}
+  community.general.redfish_command:
+    baseuri: "{{ baseuri }}"
+    auth_token: "{{ result.session.token }}"
+    category: Manager
+    command: VirtualMediaInsert
+    virtual_media:
+      image_url: "{{ iso_url }}"
+      media_types:
+        - CD
+        - DVD
+
+
+- name: Set one-time boot device to {{ bootdevice }}
+  community.general.redfish_command:
+    baseuri: "{{ baseuri }}"
+    auth_token: "{{ result.session.token }}"
+    category: Systems
+    command: SetOneTimeBoot
+    bootdevice: "{{ bootdevice }}"
+
+  register: bios_onetimeboot
+
+- name: Reboot system
+  community.general.redfish_command:
+    baseuri: "{{ baseuri }}"
+    auth_token: "{{ result.session.token }}"
+    category: Systems
+    command: PowerReboot
+  when: bios_onetimeboot.changed
+
+  # Takes about 15 minutes to reboot and apply firmware
+
+- name: Wait for SPP to complete
+  wait_for:
+    delay: 900
+    timeout: 0
