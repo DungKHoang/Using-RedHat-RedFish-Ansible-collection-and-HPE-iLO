@@ -1,0 +1,75 @@
+
+- name:   Memory - set variables   
+  set_fact:
+    name:             "{{ item.Name }}"
+    serialnumber:     "{{ item.SerialNumber }}"
+    pn:               "{{ item.PartNumber | trim }}"
+    rankcount:        "{{ item.RankCount }}"
+    capacity:         "{{ item.CapacityMiB  }}"
+    type:             "{{ item.MemoryDeviceType }}"
+    channel:          "{{ item.MemoryLocation.Channel }}"
+    controller:       "{{ item.MemoryLocation.MemoryController }}"
+    slot:             "{{ item.MemoryLocation.Slot }}"
+    socket:           "{{ item.MemoryLocation.Socket }}"
+    health:           "{{ item.Status.Health }}"  
+    state:            "{{ item.Status.State }}"
+    odata_id:         "{{resource.system_uri}}Memory/{{item.Id}}/"
+
+- name: Calculate device_locator
+  set_fact:
+    device_locator:   "{{ channel + '-' + controller + '-' + slot + '-' + socket }}"
+    
+
+
+
+- name: Set list
+  set_fact:
+    list_fact:
+      cmdb_ci:              "{{ ilohostname}}"           
+      name:                 "{{ name }}"
+      serial_number:        "{{ serialnumber }}"
+      part_number:          "{{ pn }}"
+      capacity:             "{{ capacity }}"
+      type:                 "{{ type }}"
+      module_status:        "{{ health }}"
+      device_locator:       "{{ device_locator}} "
+      #-- custom attributes
+      u_channel:             "{{ channel }}"
+      u_memory_controller:   "{{ controller }}"
+      u_slot:                "{{ slot }}"
+      u_socket:              "{{ socket }}"
+      u_odata_id:            "{{ odata_id }}"
+        
+
+- name: Update the list of data set
+  set_fact:
+    memory_dataset:  "{{ memory_dataset + [list_fact] }}"
+
+- name: Add to json file
+  lineinfile:
+      path: "{{ mem_json }}"
+
+      line: "{{ list_fact | to_json}}"
+
+
+
+
+
+
+
+- name: Memory - Add to csv file
+  lineinfile:
+    path: "{{ mem_csv }}"
+    line: >-
+      {{ 
+      ilohostname + ',' + name + ','  + serialnumber + ',' + pn + ',' + 
+      capacity + ',' + type  + ',' + health + ',' + 
+      device_locator + ',' +  channel + ',' + controller +  ',' + slot +  ',' + socket + ',' + odata_id 
+      }}
+
+
+    # cmdb_ci,name,serial_number,part_number,
+    #capacity,type,module_status,
+    #device_locator,u_channel,u_memory_controller,u_slot,u_socket,u_odata_id
+
+

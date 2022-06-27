@@ -1,0 +1,85 @@
+
+- name:   Nic - initialize variables   
+  set_fact:
+    ipv4:               ""
+    netmask:            ""
+    gateway:            ""
+    port:               ""
+    location:           "iLO Dedicated Network"
+
+
+
+- name:   Nic - set variables   
+  set_fact:
+    mac:                "{{ item.MACAddress }}"
+    health:             "{{ item.Status.Health }}"  
+    state:              "{{ item.Status.State }}"
+    manager_ipv4_list:  "{{ item.IPv4Addresses }}"
+    manager_ipv6_list:  "{{ item.IPv6Addresses }}"
+    name:               "{{ item.Name }}"
+
+- name: Nic - Set description for iLO
+  set_fact:
+    description:     "{{ item.Name }}" # "{{ (item.Name == 'Manager Dedicated Network Interface') | ternary('iLO NIC', '')}}"
+
+
+
+- name:   Nic - Get ipV4 information   
+  set_fact:
+    ipv4:             "{{ manager_ipv4_list.0.Address }}" 
+    netmask:          "{{ manager_ipv4_list.0.SubnetMask }}" 
+    gateway:          "{{ manager_ipv4_list.0.Gateway }}" 
+  when: manager_ipv4_list | length > 0              
+  # (ipv4_list | length > 0) and  (not name is search("vmnic"))
+
+
+- name:   Nic - Get ipV6 information   
+  set_fact:
+    ipv6:             "{{ manager_ipv6_list.0.Address }}" 
+    address_origin:   "{{ manager_ipv6_list.0.AddressOrigin }}" 
+    prefix_length:    "{{ manager_ipv6_list.0.PrefixLength }}" 
+  when: manager_ipv6_list | length > 0   
+
+
+
+
+- name: Set list
+  set_fact:
+    list_fact:
+      name:                 "{{ description }}"
+      cmdb_ci:              "{{ ilohostname }}"  
+      mac_address:          "{{ mac }}"
+      ip_address:           "{{ ipv4 }}"
+      netmask:              "{{ netmask }}"
+      ip_default_gateway:   "{{ gateway }}"
+      ipv6_address:         "{{ ipv6 }}"
+      state:                "{{ state }}"
+
+      port:                 "{{ port }}"
+      location:             "{{ location }}"
+#      odata_id:             "{{ odata_id}}"
+
+
+
+- name: Update the list of data set for SN update
+  set_fact:
+    manager_nic_dataset:  "{{ manager_nic_dataset + [list_fact] }}"
+
+
+- name: Nic - Add to csv file
+  lineinfile:
+    path: "{{ nic_csv }}"
+    line:  >-
+      {{ ilohostname  + ',' + name + ',' + ',' + ',' + ',' + 
+      mac  + ',' + ipv4 + ','  +  netmask + ','  + gateway +  ',' +
+      port + ',' + location + ','  }}
+# cmdb_ci,name,serial_number,part_number,firmware,
+# mac_address,ip_address,netmask,ip_default_gateway,
+# u_port,u_location,u_odata_id
+
+- name: Add to json file
+  lineinfile:
+      path: "{{ nic_json }}"
+
+      line: "{{ list_fact | to_json}}"
+      # backup: yes

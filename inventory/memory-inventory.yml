@@ -1,0 +1,71 @@
+---
+
+- hosts: localhost
+    
+
+  tasks:
+
+
+    - name: Define timestamp
+      set_fact: timestamp="{{ lookup('pipe', 'date +%Y%m%d_%H%M') }}"
+      run_once: true
+      
+
+    - name: eliminate "#" in CSV file
+      lineinfile:
+         path: "{{ server_csv }}" 
+         state: absent
+         regex: '^#'
+    
+    - name: read the {{ server_csv }} file
+      read_csv:
+         path: "{{ server_csv }}" 
+      register: server_list
+      delegate_to: localhost
+
+    - name: Get the site name
+      set_fact:
+        site:   "{{server_list.list.0.site}}"
+
+    - name: Generate csv/json files
+      block:
+        - name: define csv/json folder
+          set_fact:
+             csvdir:      "csv/{{site}}"
+             jsondir:     "json/{{site}}"
+
+        - name: Create dropoff directory for JSON
+          file:
+            path: "{{ jsondir}}"
+            state: directory
+
+        - name: Create dropoff directory for CSV
+          file:
+            path: "{{ csvdir }}"
+            state: directory
+
+        - name: Define CSV/JSON names
+          set_fact:
+             mem_csv:     "{{csvdir}}/{{timestamp}}_mem.csv"
+             mem_json:    "{{jsondir}}/{{timestamp}}_mem.json"
+
+
+        # ----- CSV files contents
+        - name: create CSV mem file
+          copy:
+             dest: "{{ mem_csv }}"
+             content: cmdb_ci,name,serial_number,part_number,capacity,type,module_status,device_locator,u_channel,u_memory_controller,u_slot,u_socket,u_odata_id
+                    
+        # ----- JSON files contents
+        - name: create JSON memory file    
+          file:
+             path:  "{{ mem_json }}"
+             state: touch  
+
+
+    - name: get server information
+      include_tasks: memory-inventory-tasks.yml
+      loop: '{{server_list.list}}'
+      loop_control:
+         loop_var: s_item
+    

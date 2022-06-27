@@ -18,12 +18,13 @@ Examples of playbooks
  - export ANSIBLE_LIBRARY=/location-where-ansible-collections-are-installed/hpe/ilo/plugins/modules
  - export ANSIBLE_MODULE_UTILS=/location-where-ansible-collections-are-installed/hpe/ilo/plugins/module_utils
 
-## Example 1 - Querying iLO
+## Getting inventory from iLO
  This set of playbooks will query iLO servers to collect data exposed with Redfish and generate CSV / JSON files
 
 ### CSV input file
   The CSV file contains list of IP addresses and iLO credentials of target servers. The format is:
   ilo_ip, ilo_username,ilo_password,site
+
 
 ### System Inventory Playbooks
 
@@ -40,7 +41,7 @@ Examples of playbooks
         - ansible-playbook storage-inventory.yml --extra-vars "server_csv=list-servers.csv"
         - ansible-playbook psu-inventory.yml --extra-vars "server_csv=list-servers.csv"
 
-        - 1.3 Playbooks
+
     
 
 

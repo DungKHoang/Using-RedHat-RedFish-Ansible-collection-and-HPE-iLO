@@ -1,0 +1,53 @@
+
+- name:   psu - set variables   
+  set_fact:
+    name:             "{{ item.Name }}"
+    serialnumber:     "{{ item.SerialNumber }}"
+    model:            "{{ item.Model }}"
+    manufacturer:     "{{ item.Manufacturer }}"
+    firmware:         "{{ item.FirmwareVersion }}"
+    capacity:         "{{ item.PowerCapacityWatts }}"
+    type:             "{{ item.PowerSupplyType }}"
+    odata_id:         "" #"{{ item['@odata.id'] }}"
+
+    health:           "{{ item.Status.Health }}"  
+    state:            "{{ item.Status.State }}"
+
+
+
+
+- name: Set list
+  set_fact:
+    list_fact:
+      cmdb_ci:              "{{ server_sys_id }}"           
+      name:                 "{{ name }}"
+      model:                "{{ model}}"
+      manufacturer:         "{{ manufacturer }}"
+      serial_number:        "{{ serialnumber }}"
+      capacity:             "{{ capacity }}"
+      type:                 "{{ type }}"
+      module_status:        "{{ health }}"
+      
+         
+
+- name: Update the list of data set
+  set_fact:
+    psu_dataset:  "{{ psu_dataset + [list_fact] }}"
+
+
+
+- name: psu - Add to csv file
+  lineinfile:
+    path: "{{ psu_csv }}"
+    line: "{{ ilohostname + ',' + server_sys_id + ',' + name + ','  + model + ',' + capacity + ',' + type  + ',' + serialnumber + ',' + firmware   + ',' + manufacturer + ',' + odata_id + ',' + health  }}"
+    # backup: yes
+
+    # server_name,server_sys_id,name,model,capacity,type,serial_number,firmware,manufacturer,odata_id,health	
+
+
+- name: Add to json file
+  lineinfile:
+      path: "{{ psu_json }}"
+
+      line: "{{ list_fact | to_nice_json}}"
+      # backup: yes

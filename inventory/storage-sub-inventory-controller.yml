@@ -1,0 +1,75 @@
+---
+- name: Init variables
+  set_fact:
+    manufacturer:     ""
+    sku:              ""
+    partnumber:       ""
+
+- name:   Set standard variables for controller  
+  set_fact:
+    name:             "{{ item.Name }}"
+    serialnumber:     "{{ item.SerialNumber }}"
+    model:            "{{ item.Model }}"
+    location:         "{{ item.Location.PartLocation.ServiceLabel }}"
+    firmware:         "{{ item.FirmwareVersion }}"
+    health:           "{{ item.Status.Health }}"
+    state:            "{{ item.Status.State }}"
+    odata_id:         "{{ (item['@odata.id'].split('#')).0}}"
+
+
+- name:   Set specific variables for controller
+  set_fact:
+      manufacturer:     "{{ item.Manufacturer }}"
+  loop: "{{ lookup('dict', item) }}"
+  loop_control:
+    loop_var:   k_item
+  when: "'Manufacturer' in k_item.key"
+
+- name:   Set specific variables for controller
+  set_fact:
+      sku:              "{{ item.SKU }}"
+  loop: "{{ lookup('dict', item) }}"
+  loop_control:
+    loop_var:   k_item
+  when: "'SKU' in k_item.key"
+
+- name:   Set specific variables for controller
+  set_fact:
+      partnumber:       "{{ item.PartNumber }}"
+  loop: "{{ lookup('dict', item) }}"
+  loop_control:
+    loop_var:   k_item
+  when: "'PartNumber' in k_item.key"
+    
+
+### This is for updating directly in SN - We may not need that as we will produce CSV to be imported by SN
+- name: Set list
+  set_fact:
+    list_fact:
+      computer:         "{{ ilohostname }}" 
+      name:             "{{ name }}"
+      serial_number:    "{{ serialnumber}}"
+
+      # -- Custom attributes
+      u_firmware:       "{{ firmware }}"
+      u_location:       "{{ location }}"
+      u_sku:            "{{ sku }}"
+      u_pn:             "{{ partnumber }}"
+      u_odata_id:       "{{ odata_id }}"
+
+
+- name: Update the list of data set
+  set_fact:
+    controller_dataset:  "{{ controller_dataset + [list_fact] }}"
+
+
+- name: storage controller - Add to csv file
+  lineinfile:
+    path: "{{ controller_csv }}"
+    line: >-
+      {{ 
+      ilohostname  + ',' + name  + ',' + model + ',' + serialnumber + ',' + 
+      firmware + ',' + location + ',' + odata_id  
+      }}
+
+  # computer,name,model,serial_number,u_firmware,u_location,u_odata_id

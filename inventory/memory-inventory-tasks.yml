@@ -1,0 +1,75 @@
+---
+
+- name: Set entry variables
+  set_fact:
+        baseuri:    '{{s_item.ilo_ip}}'
+        username:   '{{s_item.ilo_username}}'
+        password:   '{{s_item.ilo_password}}'
+
+        datatype:   SystemAll
+
+# -------------------- iLO queries start here
+
+- name: Create session on {{ baseuri }}
+  community.general.redfish_command:
+        category:   Sessions
+        command:    CreateSession
+        baseuri:    "{{ baseuri }}"
+        username:   "{{ username }}"
+        password:   "{{ password }}"
+  register: result
+
+# --- Get systems inventory
+- name: Get System Inventory on {{ baseuri }}
+  community.general.redfish_info:
+        category:   Systems
+        command:    all
+        baseuri:    "{{ baseuri }}"
+        auth_token: "{{ result.session.token }}"
+  register: result_inv
+
+- name: Set endpoint
+  set_fact:
+        endpoint: "{{ result_inv.redfish_facts }}"
+
+# --- Get iLO network inventory
+- name: Get Manager NIC inventory
+  redfish_info:
+    category: Manager
+    command: GetManagerNicInventory
+    baseuri: "{{ baseuri }}"
+    auth_token: "{{ result.session.token }}"
+  register: result_nic
+
+- name: Set endpoint
+  set_fact:
+      endpoint_ilo: "{{ result_nic.redfish_facts }}"
+      
+- name: Set iLO host name
+  set_fact:
+    ilohostname:              "{{endpoint_ilo.manager_nics.entries.0.1.0.FQDN}}" 
+
+ 
+
+# ---------------- Sub-inventories start here to collect information
+- name: Initialize memory dataset
+  set_fact:
+    memory_dataset:    []
+
+
+# --- Get memory information 
+- name: Get resource uri
+  set_fact:
+    resource:  "{{ endpoint.memory.entries.0.0 | replace('resource_uri', 'system_uri')}}"
+
+- name: Memory information on {{ baseuri }}   
+  include_tasks: memory-sub-inventory.yml
+  loop: "{{ endpoint.memory.entries.0.1 }}"
+
+- name: Delete session on {{ baseuri }}
+  community.general.redfish_command:
+        category:     Sessions
+        command:      DeleteSession
+        baseuri:      "{{ baseuri }}"
+        auth_token:   "{{ result.session.token }}"
+        session_uri:  "{{ result.session.uri }}"

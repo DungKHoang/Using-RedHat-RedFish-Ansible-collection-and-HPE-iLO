@@ -1,0 +1,72 @@
+---
+
+- hosts: localhost
+    
+
+  tasks:
+
+
+    - name: Define timestamp
+      set_fact: timestamp="{{ lookup('pipe', 'date +%Y%m%d_%H%M') }}"
+      run_once: true
+
+
+    - name: eliminate "#" in CSV file
+      lineinfile:
+         path: "{{ server_csv }}" 
+         state: absent
+         regex: '^#'
+    
+    - name: read the {{ server_csv }} file
+      read_csv:
+         path: "{{ server_csv }}" 
+      register: server_list
+      delegate_to: localhost
+
+    - name: Get the site name
+      set_fact:
+        site:   "{{server_list.list.0.site}}"
+
+    - name: Generate csv/json files
+      block:
+        - name: define csv/json folder
+          set_fact:
+             csvdir:      "csv/{{site}}"
+             jsondir:     "json/{{site}}"
+
+        - name: Create dropoff directory for JSON
+          file:
+            path: "{{ jsondir}}"
+            state: directory
+
+        - name: Create dropoff directory for CSV
+          file:
+            path: "{{ csvdir }}"
+            state: directory
+
+        - name: Define CSV/JSON names
+          set_fact:
+             nic_csv:     "{{csvdir}}/{{timestamp}}_nic.csv"
+
+             nic_json:    "{{jsondir}}/{{timestamp}}_nic.json"
+
+
+        # ----- CSV files contents
+        - name: create CSV nic file
+          copy:
+             dest:    "{{ nic_csv }}"
+             content: cmdb_ci,name,serial_number,part_number,firmware,mac_address,ip_address,netmask,ip_default_gateway,u_port,location,u_odata_id
+                  
+
+        # ----- JSON files contents
+        - name: create JSON system file
+          file:
+             path:  "{{ nic_json }}"
+             state: touch 
+
+    - name: get server information
+      include_tasks: nic-inventory-tasks.yml
+      loop: '{{server_list.list}}'
+      loop_control:
+         loop_var: s_item
+    

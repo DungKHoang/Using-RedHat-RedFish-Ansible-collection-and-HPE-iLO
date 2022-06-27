@@ -1,0 +1,75 @@
+# --- Get system information
+- name: Set variables
+  set_fact:
+    name:       "{{endpoint.system.entries.0.1.HostName }}"
+    bios:       "{{endpoint.system.entries.0.1.BiosVersion }}"
+    model:      "{{endpoint.system.entries.0.1.Model }}"
+    sku:        "{{endpoint.system.entries.0.1.SKU }}"  
+    sn:         "{{endpoint.system.entries.0.1.SerialNumber }}"
+    cpu:        "{{endpoint.system.entries.0.1.ProcessorSummary.Model }}"
+    cpu_count:  "{{endpoint.system.entries.0.1.ProcessorSummary.Count }}"
+    ram:        "{{endpoint.system.entries.0.1.MemorySummary.TotalSystemMemoryGiB }}"
+    s_health:   "{{ endpoint.system.entries.0.1.Status.HealthRollup  }}"
+
+
+    
+- name: Addtional attributes
+  set_fact:
+    asset_tag:  "e-{{ sn }}"
+    state:      "In stock"
+    substate:  "Available"  
+    assigned_to: ""
+    company:    "HPE" 
+
+- name: Set server serial number
+  set_fact:
+    server_serial_number:       "{{endpoint.system.entries.0.1.SerialNumber}}"   # For use in inventory mem, nic
+
+- name: Set list
+  set_fact:
+    list_fact:
+      name:               "{{ ilohostname }}"
+      host_name:          "{{ ilohostname }}"
+      model_id:           "{{ model }}"
+      serial_number:      "{{ sn }}"
+      cpu_name:           "{{ cpu }}"
+      cpu_count:          "{{ cpu_count }}"
+      cpu_core_count:     "{{ cpu_core }}"    # Come from sub-inventory-cpu.yml
+      cpu_core_thread:    "{{ cpu_thread }}"  # Come from sub-inventory-cpu.yml 
+      ram:                "{{ ram }}"
+
+      u_sku:              "{{ sku }}"
+      u_server_health:    "{{ s_health }}"
+      u_ilo_firmware:     "{{ ilofirmware }}"
+
+      # Just for Json file only
+      u_hpe_ilo_ip:       "{{ baseuri }}"
+
+
+- name: Update the list of data set
+  set_fact:
+    compute_dataset:  "{{ compute_dataset + [list_fact] }}"
+
+
+- name: Add to csv file
+  lineinfile:
+      path: "{{ system_csv }}"
+      line: >-
+        {{ ilohostname + ',' + model + ',' + asset_tag + ',' + state + ',' + substate + ',' + assigned_to + ',' + company + ',' + sn + ',' + 
+        cpu + ',' + cpu_count + ',' + cpu_core + ',' + cpu_thread + ',' + ram + ',' + 
+        ',' + ',' + sku + ',' + s_health + ',' + ',' + baseuri + ',' + ',' + username + ',' + password + ',' + ',' + ',' + ',' + ',' + 
+        ilofirmware + ',' + ',' + ',' }}
+      
+      #name,model_id,asset_tag,state,substate,assigned_to,company,serial_number,
+      #cpu_name,cpu_count,cpu_core_count,cpu_core_thread,ram
+      #u_rack,u_rack_unit,u_sku,u_server_health
+      #u_username,u_hpe_ilo_ip_v4,u_hpe_ilo_ip_v6,u_hpe_ilo_username,u_hpe_ilo_password,u_ilo_ip_v4,u_ilo_ip_v6,u_ilo_username,u_ilo_password,
+      #u_ilo_firmware,u_imo_order,u_hpe_order,u_slin
+
+
+
+- name: Add to json file
+  lineinfile:
+      path: "{{ system_json }}"
+
+      line: "{{ list_fact | to_json}}"

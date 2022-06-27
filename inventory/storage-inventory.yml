@@ -1,0 +1,95 @@
+---
+
+- hosts: localhost
+    
+
+  tasks:
+
+    - name: Define timestamp
+      set_fact: timestamp="{{ lookup('pipe', 'date +%Y%m%d_%H%M') }}"
+      run_once: true
+
+
+
+    - name: eliminate "#" in CSV file
+      lineinfile:
+         path: "{{ server_csv }}" 
+         state: absent
+         regex: '^#'
+    
+    - name: read the {{ server_csv }} file
+      read_csv:
+         path: "{{ server_csv }}" 
+      register: server_list
+      delegate_to: localhost
+
+    - name: Get the site name
+      set_fact:
+        site:   "{{server_list.list.0.site}}"
+
+    - name: Generate csv/json files
+      block:
+        - name: define csv/json folder
+          set_fact:
+             csvdir:      "csv/{{site}}"
+             jsondir:     "json/{{site}}"
+
+        - name: Create dropoff directory for JSON
+          file:
+            path: "{{ jsondir}}"
+            state: directory
+
+        - name: Create dropoff directory for CSV
+          file:
+            path: "{{ csvdir }}"
+            state: directory
+
+        - name: Define CSV/JSON names
+          set_fact:
+             controller_csv:  "{{csvdir}}/{{timestamp}}_storage_controller.csv"
+             pdisk_csv:       "{{csvdir}}/{{timestamp}}_storage_physical_disk.csv"
+             ldisk_csv:       "{{csvdir}}/{{timestamp}}_storage_logical_disk.csv"
+
+             controller_json: "{{jsondir}}/{{timestamp}}_storage_controller.json"
+             pdisk_json:      "{{jsondir}}/{{timestamp}}_storage_physical_disk.json"
+             ldisk_json:      "{{jsondir}}/{{timestamp}}_storage_logical_disk.json"
+
+        # ----- CSV files contents
+        # For storage, the cmdb_ci is replaced with computer
+        - name: create CSV  storage_controller file
+          copy:
+             dest: "{{ controller_csv }}"
+             content: computer,name,model,serial_number,u_firmware,u_location,u_odata_id																																										
+
+        - name: create CSV  physical disk file
+          copy:
+             dest: "{{ pdisk_csv }}" 
+             content: computer,name,model,serial_number,storage_type,device_interface,size,size_bytes,u_firmware,u_location,u_odata_id 
+
+        - name: create CSV logical disk file
+          copy:
+             dest: "{{ ldisk_csv }}" 
+             content: computer,name,lun,size,size_bytes,u_display_name,u_raid,u_odata_id 
+
+        # ----- JSON files contents
+        - name: create JSON system file
+          file:
+             path:  "{{ controller_json }}"
+             state: touch 
+
+        - name: create JSON system file
+          file:
+             path:  "{{ pdisk_json }}"
+             state: touch 
+
+        - name: create JSON system file
+          file:
+             path:  "{{ ldisk_json }}"
+             state: touch 
+
+    - name: get server information
+      include_tasks: storage-inventory-tasks.yml
+      loop: '{{server_list.list}}'
+      loop_control:
+         loop_var: s_item
+    

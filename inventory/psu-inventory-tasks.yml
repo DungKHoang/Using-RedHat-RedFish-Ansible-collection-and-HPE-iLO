@@ -1,0 +1,97 @@
+---
+
+- name: Set entry variables
+  set_fact:
+        baseuri:    '{{s_item.u_hpe_ilo_ip}}'
+        username:   '{{s_item.u_hpe_ilo_username}}'
+        password:   '{{s_item.u_hpe_ilo_password}}'
+
+        datatype:   SystemAll
+
+# -------------------- iLO queries start here
+
+- name: Create session on {{ baseuri }}
+  community.general.redfish_command:
+        category:   Sessions
+        command:    CreateSession
+        baseuri:    "{{ baseuri }}"
+        username:   "{{ username }}"
+        password:   "{{ password }}"
+  register: result
+
+# --- Get iLO network inventory
+- name: Get Manager NIC inventory
+  redfish_info:
+    category: Manager
+    command: GetManagerNicInventory
+    baseuri: "{{ baseuri }}"
+    auth_token: "{{ result.session.token }}"
+  register: result_nic
+
+- name: Set endpoint
+  set_fact:
+      endpoint_ilo: "{{ result_nic.redfish_facts }}"
+
+
+
+- name: Set iLO host name
+  set_fact:
+    ilohostname:              "{{endpoint_ilo.manager_nics.entries.0.1.0.FQDN}}" 
+
+- name: Get server record based on host name
+  servicenow.itsm.configuration_item_info:
+      sys_class_name:  cmdb_ci_server
+      query:
+        - name: = {{ilohostname}}
+  ignore_errors: yes
+  register: result_server
+
+- block:
+    - name: Set Server SysID
+      set_fact:
+        server_sys_id:            "NA"
+    - name: Output message when server not found in CMDB
+      debug:
+        msg: " Server {{ilohostname}} not found in CMDB"
+  
+  when: result_server.failed == true
+    
+
+# --- Get Power Supply (psu) inventory
+- name: Get Power Supply inventory
+  redfish_info:
+    category: Chassis
+    command: GetPsuInventory
+    baseuri: "{{ baseuri }}"
+    auth_token: "{{ result.session.token }}"
+  register: result_psu
+
+- name: Set endpoint
+  set_fact:
+      endpoint_psu: "{{ result_psu.redfish_facts }}"
+
+# ---------------- Sub-inventories start here to collect information
+
+- name: Initialize nic dataset
+  set_fact:
+    psu_dataset:    []
+
+
+
+# --- Get psu information
+- name: psu network information {{ baseuri }}   
+  include_tasks: psu-sub-inventory.yml
+  loop: "{{ endpoint_psu.psu.entries}}" 
+
+- name: Print
+  debug:
+    msg:  "{{ psu_dataset }}"
+
+
+- name: Delete session on {{ baseuri }}
+  community.general.redfish_command:
+        category:     Sessions
+        command:      DeleteSession
+        baseuri:      "{{ baseuri }}"
+        auth_token:   "{{ result.session.token }}"
+        session_uri:  "{{ result.session.uri }}"

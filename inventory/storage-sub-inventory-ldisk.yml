@@ -1,0 +1,66 @@
+
+- name: Standard attributes
+  set_fact:
+    size_bytes:       "{{ item.CapacityBytes }}"       
+    size:             "{{ '{:0.2f}'.format(item.CapacityBytes / (1024 ** 4)) }} TB"        
+    odata_id:         "{{ item['@odata.id'] }}"
+    health:           "{{ item.Status.Health }}"
+    state:            "{{ item.Status.State }}"
+
+    display_name:     ""
+    lun:              ""
+    raid:             ""
+
+- block:
+    - set_fact:
+        name:         "{{ item.Id }}"  
+  when: "'VolumeType' in item"
+
+- name:   Volumes - set variables   
+  set_fact:
+    name:             "{{ item.Name }}"
+    display_name:     "{{ item.DisplayName }}"
+    lun:              "{{ item.LogicalUnitNumber }}"
+    raid:             "{{ item.RAIDType }}"    
+    encrypted:        "{{ item.Encrypted }}"
+  when: "'VolumeType' not in item"
+
+
+
+
+- name: Set list
+  set_fact:
+    list_fact:
+      computer:               "{{ ilohostname }}" 
+
+      name:                   "{{ name }}"
+      display_name:           "{{ display_name }}"
+      lun:                    "{{ lun }}"
+      raid:                   "{{ raid }}"
+      size:                   "{{ size}}" 
+               
+      
+      # ---- custom attribute
+      u_odata_id:              "{{ odata_id }}"              
+
+
+- name: Update the list of data set
+  set_fact:
+    pdisk_dataset:  "{{ ldisk_dataset + [list_fact] }}"
+
+
+- name: Logical Disk - Add to csv file
+  lineinfile:
+    path: "{{ ldisk_csv }}"
+    line: >-
+      {{ 
+      ilohostname  + ',' + name + ',' + 
+      lun + ',' +  size  + ',' + size_bytes + ',' +  display_name + ',' + raid + ',' + odata_id 
+      }}
+    
+    # computer,name,lun,size,size_bytes,u_display_name,u_raid,u_odata_id
+
+    
+
+
+

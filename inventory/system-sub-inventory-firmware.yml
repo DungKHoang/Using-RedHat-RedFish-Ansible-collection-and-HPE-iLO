@@ -1,0 +1,17 @@
+
+- name:   firmware - set variables   
+  set_fact:
+    name:             "{{ item.Name }}"
+    version:          "{{ item.Version }}"  
+
+- name:   firmware - set ilo firmware variable
+  set_fact:
+    ilofirmware:     "{{ item.Version }}"  
+  when: name is match("iLO*")
+
+- name: firmware - Add to csv file
+  lineinfile:
+    path:  "{{ fw_csv }}" #csv/firmware.csv
+    line: "{{ baseuri + ',' + name  + ','  + version }}"
+    # backup: yes
+  when: version | length > 0

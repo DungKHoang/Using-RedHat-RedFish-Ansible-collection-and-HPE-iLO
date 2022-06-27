@@ -1,0 +1,18 @@
+
+- name:   CPU - set variables   
+  set_fact:
+    id:           "{{ item.Id }}"
+    model:        "{{ item.Model }}"
+    speed:        "{{ item.MaxSpeedMHz }}"
+    cpu_core:     "{{ item.TotalCores }}"         # Will be used in sub-inventory-system.yml
+    cpu_thread:   "{{ item.TotalThreads }}"       # Will be used in sub-inventory-system.yml
+    health:       "{{ item.Status.Health }}"
+    odata_id:     "{{resource.system_uri}}{{item.Name}}/{{item.Id}}/"
+
+
+- name: CPU - Add to csv file
+  lineinfile:
+    path: "{{ cpu_csv }}"
+    line: "{{ baseuri + ',' + id + ',' + model + ',' + speed + ',' + cpu_core + ',' + cpu_thread + ',' + odata_id + ',' + health }}"
+
+

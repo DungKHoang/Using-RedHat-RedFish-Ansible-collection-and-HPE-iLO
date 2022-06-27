@@ -1,0 +1,124 @@
+---
+
+- name: Set entry variables
+  set_fact:
+        baseuri:    '{{s_item.ilo_ip}}'
+        username:   '{{s_item.ilo_username}}'
+        password:   '{{s_item.ilo_password}}'
+
+        datatype:   SystemAll
+
+# -------------------- iLO queries start here
+
+- name: Create session on {{ baseuri }}
+  community.general.redfish_command:
+        category:   Sessions
+        command:    CreateSession
+        baseuri:    "{{ baseuri }}"
+        username:   "{{ username }}"
+        password:   "{{ password }}"
+  register: result
+
+
+# --- Get iLO network inventory
+- name: Get Manager NIC inventory
+  redfish_info:
+    category: Manager
+    command: GetManagerNicInventory
+    baseuri: "{{ baseuri }}"
+    auth_token: "{{ result.session.token }}"
+  register: result_nic
+
+- name: Set endpoint
+  set_fact:
+      endpoint_ilo: "{{ result_nic.redfish_facts }}"
+
+- name: Set iLO host name
+  set_fact:
+    ilohostname:              "{{endpoint_ilo.manager_nics.entries.0.1.0.FQDN}}" 
+    
+
+# ---------------- Sub-inventories start here to collect information
+
+# ----------------Controller inventory
+- name: Get controller Inventory on {{ baseuri }}
+  ilo_storage_info:
+        category:   Controller
+        command:    GetStorageController
+        baseuri:    "{{ baseuri }}"
+        auth_token: "{{ result.session.token }}"
+  register: result_cont
+
+- name: Set count
+  set_fact:
+      controller_count:     "{{  result_cont.redfish_facts.controller.count }}"
+
+- name: Set endpoint
+  set_fact:
+      controller_entries:   "{{ result_cont.redfish_facts.controller.entries }}"
+      controller_dataset:       []
+
+
+
+- name: Controller information on {{ baseuri }}   
+  include_tasks: storage-sub-inventory-controller.yml
+  loop: "{{ controller_entries }}"
+  when: controller_count | int > 0
+
+# ----------------Physical disk inventory
+- name: Get physical disk Inventory on {{ baseuri }}
+  ilo_storage_info:
+        category:   Disk
+        command:    GetPhysicalDisk
+        baseuri:    "{{ baseuri }}"
+        auth_token: "{{ result.session.token }}"
+  register: result_pdisk
+
+- name: Set count
+  set_fact:
+      pdisk_count:      "{{  result_pdisk.redfish_facts.physical_disk.count }}"
+
+- name: Set endpoint
+  set_fact:
+      pdisk_entries:    "{{ result_pdisk.redfish_facts.physical_disk.entries }}"
+      pdisk_dataset:       []
+
+
+# ---- Get  physical drives
+- name: Physical Drives on {{ baseuri }}
+  include_tasks: storage-sub-inventory-pdisk.yml
+  loop: "{{ pdisk_entries }}"
+  when: pdisk_count | int > 0
+
+# ----------------Logical disk inventory
+- name: Get logical disk Inventory on {{ baseuri }}
+  ilo_storage_info:
+        category:   Disk
+        command:    GetLogicalDisk
+        baseuri:    "{{ baseuri }}"
+        auth_token: "{{ result.session.token }}"
+  register: result_ldisk
+
+- name: Set count
+  set_fact:
+      ldisk_count:      "{{  result_ldisk.redfish_facts.logical_disk.count }}"
+
+- name: Set endpoint
+  set_fact:
+      ldisk_entries:    "{{ result_ldisk.redfish_facts.logical_disk.entries }}"
+      ldisk_dataset:    []
+
+
+# ---- Get  logical drives
+- name: Logical Drives on {{ baseuri }}
+  include_tasks: storage-sub-inventory-ldisk.yml
+  loop: "{{ ldisk_entries }}"
+  when: ldisk_count | int > 0
+
+- name: Delete session on {{ baseuri }}
+  community.general.redfish_command:
+        category:     Sessions
+        command:      DeleteSession
+        baseuri:      "{{ baseuri }}"
+        auth_token:   "{{ result.session.token }}"
+        session_uri:  "{{ result.session.uri }}"

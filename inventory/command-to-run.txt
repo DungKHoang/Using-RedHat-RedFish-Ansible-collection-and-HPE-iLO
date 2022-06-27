@@ -1,0 +1,7 @@
+ansible-playbook system-inventory.yml --extra-vars "server_csv=chippewa-list-servers.csv"
+
+ansible-playbook memory-inventory.yml --extra-vars "server_csv=chippewa-list-servers.csv"
+
+ansible-playbook nic-inventory.yml --extra-vars "server_csv=chippewa-list-servers.csv"
+
+ansible-playbook storage-inventory.yml --extra-vars "server_csv=chippewa-list-servers.csv"

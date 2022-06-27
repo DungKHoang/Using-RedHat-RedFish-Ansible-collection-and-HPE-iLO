@@ -1,0 +1,75 @@
+---
+
+- hosts: localhost
+    
+
+  tasks:
+
+    - name: Set csv file for servers inventory
+      set_fact:
+         server_csv:  inventory-list-servers.csv
+
+    - name: Define timestamp
+      set_fact: timestamp="{{ lookup('pipe', 'date +%Y%m%d') }}" #'date +%Y%m%d_%H%M%S') }}"
+      run_once: true
+
+
+
+    - name: Create CSV/JSON output files
+      block:
+        - name: define csv/json files
+          set_fact:
+             csvdir:      csv
+             jsondir:     json
+
+             psu_csv:       "csv/{{timestamp}}_psu.csv"
+             
+             psu_json:      "json/{{timestamp}}_psu.json"
+
+
+        - name: Create dropoff directory for JSON
+          file:
+            path: "{{ jsondir }}"
+            state: directory
+
+        - name: Create dropoff directory for CSV
+          file:
+            path: "{{ csvdir }}"
+            state: directory
+
+
+        # ----- JSON files
+
+
+        - name: create JSON psu file
+          file:
+             path:  "{{ psu_json }}"
+             state: touch 
+
+
+        # ----- CSV files
+ 
+        - name: create CSV psu file
+          copy:
+             dest:    "{{ psu_csv }}"
+             content: server_name,server_sys_id,name,model,capacity,type,serial_number,firmware,manufacturer,odata_id,health
+
+
+    - name: eliminate "#" in CSV file
+      lineinfile:
+         path: "{{ server_csv }}" 
+         state: absent
+         regex: '^#'
+    
+    - name: read the {{ server_csv }} file
+      read_csv:
+         path: "{{ server_csv }}" 
+      register: server_list
+      delegate_to: localhost
+
+    - name: get psu information
+      include_tasks: psu-inventory-tasks.yml
+      loop: '{{server_list.list}}'
+      loop_control:
+         loop_var: s_item
+    

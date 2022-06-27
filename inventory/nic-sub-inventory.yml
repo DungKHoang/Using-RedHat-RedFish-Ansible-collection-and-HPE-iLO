@@ -1,0 +1,88 @@
+# ---- Data NICs can have multiple IP addresses 
+# ---- Ignore default gateway and subnet mask
+# -----
+
+
+- name:   Nic - set variables   
+  set_fact:
+    mac:              "{{ item.MACAddress }}"
+    health:           "{{ item.Status.Health }}"  
+    state:            "{{ item.Status.State }}"
+    name:             "{{ item.Name }}"
+    serial_number:    "{{item.SerialNumber}}"
+    part_number:      "{{item.PartNumber}}"
+    firmware:         "{{item.Firmware}}"
+
+    port:             "{{ item.Port }}"
+    location:         "{{ item.Location }}"
+
+    odata_id:         "{{ item['@odata.id']}}"
+
+
+- name:   Nic - Get IP information   
+  set_fact:
+     ipv4:        "{{ item.IPv4Addresses }}"
+     ipv6:        "{{ item.IPv6Addresses }}"
+  when: (not name is search("vmnic"))
+
+# ---- for ServiceNow update network adapter
+- name: Set list
+  set_fact:
+    list_fact:
+      cmdb_ci:              "{{ ilohostname }}"  
+
+      name:                 "{{ name }}"
+      mac_address:          "{{ mac }}"
+      state:                "{{ state }}"
+      port:                 "{{ port }}"
+      location:             "{{ location }}"
+      serial_number:        "{{ serial_number }}"
+      part_number:          "{{ part_number }}"
+      firmware:             "{{ firmware }}"
+      odata_id:             "{{ odata_id }}"
+
+
+
+# ---- for ServiceNow update IP address
+
+- name: Set list IP V4
+  set_fact:
+     ipv4_list: "{{ ipv4_list + [ {'ip_version': 'IPv4','mac_address': mac, 'ip_address': ip_item.Address }]  }}"  
+  loop: "{{ipv4}}"
+  loop_control:
+      loop_var: ip_item
+  when: ipv4 | length > 0 
+
+- name: Set list IP V6
+  set_fact:
+     ipv6_list: "{{ ipv6_list + [ {'ip_version': 'IPv6' ,'mac_address': mac, 'ip_address': ip_item.Address }]  }}"  
+  loop: "{{ipv6}}"
+  loop_control:
+      loop_var: ip_item
+  when: (ipv6 | length > 0) and (ip_item.Address != 'N/A') 
+
+
+- name: Update the list of data set
+  set_fact:
+    nic_dataset:  "{{ nic_dataset + [list_fact] }}"
+
+
+- name: Nic - Add to csv file
+  lineinfile:
+    path: "{{ nic_csv }}"
+    line:  >-
+      {{ ilohostname  + ',' + name + ',' + serial_number + ',' + part_number + ',' + firmware + ',' + 
+      mac  + ',' + ',' + ','  +  ',' +
+      port + ',' + location + ',' + odata_id  }}
+# cmdb_ci,name,serial_number,part_number,firmware,
+# mac_address,ip_address,netmask,ip_default_gateway,
+# u_port,u_location,u_odata_id
+
+
+- name: Add to json file
+  lineinfile:
+      path: "{{ nic_json }}"
+
+      line: "{{ list_fact | to_json}}"
+      # backup: yes
+

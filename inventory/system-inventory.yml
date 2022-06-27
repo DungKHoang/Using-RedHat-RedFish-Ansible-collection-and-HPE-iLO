@@ -1,0 +1,95 @@
+---
+
+- hosts: localhost
+    
+
+  tasks:
+
+
+    - name: Define timestamp
+      set_fact: timestamp="{{ lookup('pipe', 'date +%Y%m%d_%H%M') }}"
+      run_once: true
+
+    - name: eliminate "#" in CSV file
+      lineinfile:
+         path: "{{ server_csv }}" 
+         state: absent
+         regex: '^#'
+    
+    - name: read the {{ server_csv }} file
+      read_csv:
+         path: "{{ server_csv }}" 
+      register: server_list
+      delegate_to: localhost
+
+    - name: Get the site name
+      set_fact:
+        site:   "{{server_list.list.0.site}}"
+
+    - name: Generate csv/json files
+      block:
+        - name: define csv/json folder
+          set_fact:
+             csvdir:      "csv/{{site}}"
+             jsondir:     "json/{{site}}"
+
+        - name: Create dropoff directory for JSON
+          file:
+            path: "{{ jsondir}}"
+            state: directory
+
+        - name: Create dropoff directory for CSV
+          file:
+            path: "{{ csvdir }}"
+            state: directory
+
+        - name: Define CSV/JSON names
+          set_fact:
+             system_csv:    "{{csvdir}}/{{timestamp}}_system.csv"
+             cpu_csv:       "{{csvdir}}/{{timestamp}}_cpu.csv"
+             fw_csv:        "{{csvdir}}/{{timestamp}}_firmware.csv"
+
+
+             system_json:     "{{jsondir}}/{{timestamp}}_system.json"
+             cpu_json:        "{{jsondir}}/{{timestamp}}_cpu.json"
+             fw_json:         "{{jsondir}}/{{timestamp}}_firmware.json"
+
+        # ----- CSV files contents
+        - name: create CSV system file
+          copy:
+            dest: "{{ system_csv }}"
+            content: name,model_id,asset_tag,state,substate,assigned_to,company,serial_number,cpu_name,cpu_count,cpu_core_count,cpu_core_thread,ram,u_rack,u_rack_unit,u_sku,u_server_health,u_username,u_hpe_ilo_ip_v4,u_hpe_ilo_ip_v6,u_hpe_ilo_username,u_hpe_ilo_password,u_ilo_ip_v4,u_ilo_ip_v6,u_ilo_username,u_ilo_password,u_ilo_firmware,u_imo_order,u_hpe_order,u_slin
+                     
+        - name: create CSV cpu file
+          copy:
+              dest: "{{ cpu_csv }}"
+              content: u_hpe_ilo_ip,id,model,speed,core,thread,odata_id,health
+
+        - name: create CSV firmware file
+          copy:
+             dest: "{{ fw_csv }}"
+             content: u_hpe_ilo_ip,name,version   
+
+        # ----- JSON files contents
+        - name: create JSON system file
+          file:
+             path:  "{{ system_json }}"
+             state: touch 
+
+        - name: create JSON cpu file
+          file:
+              path:  "{{ cpu_json }}"
+              state: touch 
+
+        - name: create JSON firmware file
+          file:
+             path:  "{{ fw_json }}"
+             state: touch  
+
+
+    - name: get server information
+      include_tasks: system-inventory-tasks.yml
+      loop: '{{server_list.list}}'
+      loop_control:
+         loop_var: s_item
+    

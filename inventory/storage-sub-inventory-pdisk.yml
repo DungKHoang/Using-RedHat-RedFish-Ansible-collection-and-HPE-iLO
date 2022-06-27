@@ -1,0 +1,88 @@
+
+
+- name:   Disk - set variables   
+  set_fact:
+    name:             "{{ item.Name }}"
+    model:            "{{ item.Model }}"
+    
+
+    serialnumber:     "{{ item.SerialNumber }}"
+    
+    odata_id:         "{{ item['@odata.id'] }}"
+    firmware:         "{{ item.Revision }}"
+    mediatype:        "{{ item.MediaType }}"
+    health:           "{{ item.Status.Health }}"
+    type:             ""
+
+- name: Set size
+  set_fact:
+      size_bytes:             "{{ item.CapacityBytes }}"       
+      size:                   "{{ '{:0.2f}'.format(item.CapacityBytes / (1024 ** 4)) }} TB" 
+  when: "'CapacityBytes' in item.keys()"
+
+- name: Set type ( NVME...)
+  set_fact:
+        type:             "{{ item.Protocol }}"
+  when: "'Protocol' in item.keys()"
+
+- name: Set location for physical disk
+  set_fact:
+      location:       "{{ item.PhysicalLocation.PartLocation.ServiceLabel }}"
+  when: "'PhysicalLocation' in item.keys()"
+
+- name: Set location for physical disk
+  block:
+    - set_fact:
+        location:   "{{ item.Location.0.Info }}"
+
+    - block:
+        - set_fact:
+            info:       "{{ item.Location.0.Info.split(':') }}"
+            format:     "{{ item.Location.0.InfoFormat.split(':') }}"
+
+        - set_fact:
+            location:   "{{format.0}}={{info.0}}:{{format.1}}={{info.1}}"
+      when: "':' in item.Location.0.Info "       
+  when: "'Location' in item.keys()"
+
+
+- name: Set list
+  set_fact:
+    list_fact:
+      computer:               "{{ ilohostname }}" 
+
+      model:                  "{{ model }}"
+      serial_number:          "{{ serialnumber}}"
+      device_interface:       "{{ type }}"          
+      storage_type:            "{{ mediatype }}"
+
+      # ---- custom attribute
+
+      u_firmware:              "{{ firmware }}"
+      u_location:              "{{ location }}"
+      u_odata_id:              "{{ odata_id }}"
+      u_type:                  "{{ type }}"              
+
+
+- name: Update the list of data set
+  set_fact:
+    pdisk_dataset:  "{{ pdisk_dataset + [list_fact] }}"
+
+
+- name: Disk - Add to csv file
+  lineinfile:
+    path: "{{ pdisk_csv }}"
+    line: >-
+      {{ 
+      ilohostname  + ',' + name + ',' + model + ',' + serialnumber + ',' + 
+      mediatype + ',' + type + ',' + size + ',' + size_bytes + ',' + 
+      firmware + ',' + location + ',' + odata_id  
+      }}
+    
+    # computer,name,model,serial_number,
+    # storage_type,device_interface,size,size_bytes
+    # u_firmware,u_location,u_odata_id 
+
+
+
+
