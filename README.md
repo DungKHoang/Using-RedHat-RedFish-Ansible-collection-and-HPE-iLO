@@ -47,7 +47,7 @@
 
 
 ### JSON input file
-  The input filw will be in JSON format. Use the **resources.json** as an example. Playbooks will use only attributes related to iLO
+  The input file will be in JSON format. Use the **resources.json** as an example. Playbooks will use only attributes related to iLO
 
 ### Playbooks for configuring iLO
 
@@ -57,7 +57,7 @@
         - ansible-playbook --extra-vars '@resources.json' configure-GS-resources.yml
 
 ### Pre-requisites
-    Review the vars section in **configure-GS-resources.yml**
+    Review the vars section in configure-GS-resources.yml
 
 
     
